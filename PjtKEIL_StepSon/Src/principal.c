@@ -1,8 +1,9 @@
 
 
 #include "DriverJeuLaser.h"
-
-extern void CallbackSon(void);
+#include "GestionSon.h"
+//extern void CallbackSon(void);
+//extern void StartSon(void);
 
 
 
@@ -35,6 +36,10 @@ Active_IT_Debordement_Timer(TIM4,2,CallbackSon);
 	
 while	(1)
 	{
+		//on fait une pause de 1 million pour attendre avant de remettre a 0 l'index
+		for(int i=0;i<5000000;i++) {
+		}
+		StartSon();
 	}
 }
 
