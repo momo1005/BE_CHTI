@@ -36,7 +36,8 @@ DFT_ModuleAuCarre proc
 	mov r2, #0 ; notre index n 0->63 
 	ldr R4,=TabCos ;recuperer l'adresse du tableau de cos
 	ldr R5,=TabSin ; recuperer l'adresse du tableau de sin
-	mov r9, #0 ; on initialise la somme
+	mov r9, #0 ; on initialise la somme de cosinus
+	mov r10,#0; on initialise la somme de cosinus
 	
 	
 DEBUTFOR
@@ -45,8 +46,11 @@ DEBUTFOR
 	;les sommer
 	mul r3, r2, r1 ; index nk=p - Attention mettre un masque pour faire le modulo 64
 	AND r3, #0x003F ; On applique le masque pour faire modulo 64
+	
 	ldrsh r6, [r4,r3,LSL #1] ; cos (5.27)
+	
 	;on fera pareille pour sin ->r8
+	ldrsh r8, [r5,r3,LSL #1] ; sin (5.27)
 	
 	ldrsh r7, [r0,r2,lsl #1] ; le signal
 	
@@ -54,13 +58,24 @@ DEBUTFOR
 	add r9,r6 ; r9 = somme signal*cos pour avoir la partie réelle
 	
 	;pareille pour sin ->r10
+	mul r8,r7
+	add r10,r8
 	
 	add R2, #1 ; on increment n
 	cmp r2, #64 ;Z set to 1 when equal, 0 if not equal on compare n avec 64
 	bne DEBUTFOR ; si pas encore à 64 on continue notre boucle for
 	
 FINFOR
-	mov r0, r9
+;On est sur 32bit mais en faisant le carre on passe sur du 64 bit
+; on doit donc "split" notre nombre entre deux registre
+	;mul r9, r9
+	;mul r10,r10
+	;add r0, r9,r10 ; module au carre
+
+	smull r1,r0,r10,r10
+	smlal r1,r0,r9,r9
+	
+	
 	pop {r4-r10,lr}
 	bx lr
 	endp
