@@ -1,0 +1,443 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000                 PRESERVE8
+    2 00000000                 THUMB
+    3 00000000         
+    4 00000000         
+    5 00000000                 IMPORT           LongueurSon
+    6 00000000                 IMPORT           PeriodeSonMicroSec
+    7 00000000                 IMPORT           Son
+    8 00000000                 include          DriverJeuLaser.inc
+    1 00000000         
+    2 00000000         ; Bibliotheque DriverJeuLaser (ancienne gassp72 adaptée 
+                       2021 - TR)
+    3 00000000         ; Accès en aux fonctions suivantes :
+    4 00000000         ; GPIO :
+    5 00000000         ; GPIOA_Set(char Broche), GPIOB_Set(char Broche), GPIOC_
+                       Set(char Broche)
+    6 00000000         ; GPIOA_Clear(char Broche), GPIOB_Clear(char Broche), GP
+                       IOC_Clear(char Broche)
+    7 00000000         
+    8 00000000         ; PWM :
+    9 00000000         ;/**
+   10 00000000         ; * @brief  Fixe une valeur de PWM, Val, en tick horloge
+                       . La rapport cyclique effectif
+   11 00000000         ; * est donc : rcy = Thaut_ticks / Periode_ticks
+   12 00000000         ; * @note   spécifique Jeu Laser, PWM liée exclusivement
+                        au TIM3, chan3
+   13 00000000         ; * @param  Thaut_ticks : durée de l'état haut d'une imp
+                       ulsion en Ticks
+   14 00000000         ;  * @retval None
+   15 00000000         ; */
+   16 00000000         
+   17 00000000         ;void PWM_Set_Value_TIM3_Ch3( unsigned short int Thaut_t
+                       icks);
+   18 00000000                 import           PWM_Set_Value_TIM3_Ch3
+   19 00000000         
+   20 00000000         
+   21 00000000         
+   22 00000000         ;/**
+   23 00000000         ; * @brief  Mise à 1 d'une broche GPIO 
+   24 00000000         ;  * @note   Une fonction par GPIO
+   25 00000000         ; * @param  Broche : 0 à 15
+   26 00000000         ; * @retval None
+   27 00000000         ; */
+   28 00000000         
+   29 00000000         ;void GPIOA_Set(char Broche);
+   30 00000000                 import           GPIOA_Set
+   31 00000000         
+   32 00000000         ;void GPIOB_Set(char Broche);
+   33 00000000                 import           GPIOB_Set
+   34 00000000         
+   35 00000000         ;void GPIOC_Set(char Broche);
+   36 00000000                 import           GPIOC_Set
+   37 00000000         
+   38 00000000         
+   39 00000000         
+   40 00000000         ;/**
+   41 00000000         ; * @brief  Mise à 0 d'une broche GPIO 
+   42 00000000         ;  * @note   Une fonction par GPIO
+   43 00000000         ; * @param  Broche : 0 à 15
+   44 00000000         ; * @retval None
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   45 00000000         ;  */
+   46 00000000         
+   47 00000000         ;void GPIOA_Clear(char Broche);
+   48 00000000                 import           GPIOA_Clear
+   49 00000000         
+   50 00000000         ;void GPIOB_Clear(char Broche);
+   51 00000000                 import           GPIOB_Clear
+   52 00000000         
+   53 00000000         ;void GPIOC_Clear(char Broche);
+   54 00000000                 import           GPIOC_Clear
+   55 00000000         
+   56 00000000                 end
+    9 00000000         ; ====================== zone de réservation de données,
+                         ======================================
+   10 00000000         ;Section RAM (read only) :
+   11 00000000                 area             mesdata,data,readonly
+   12 00000000         
+   13 00000000         
+   14 00000000         ;Section RAM (read write):
+   15 00000000                 area             maram,data,readwrite
+   16 00000000         
+   17 00000000 00 00   SortieSon
+                               dcw              0
+   18 00000002                 EXPORT           SortieSon
+   19 00000002         
+   20 00000002 00 00 00000000 
+                       index   dcd              0           ;index de tableau
+   21 00000008                 EXPORT           index
+   22 00000008         
+   23 00000008 000002CF 
+                       auxmul  dcd              719
+   24 0000000C 0000FFFF 
+                       auxdiv  dcd              65535
+   25 00000010         
+   26 00000010         ;dcd = 32 bit //commence par l'octet de poids faible car
+                        little indian
+   27 00000010         ;32 bit = 4 tiroire dans la memoire de 8bits
+   28 00000010         ;dcw 16bit
+   29 00000010         ;dcb 8 bits
+   30 00000010         
+   31 00000010         
+   32 00000010         ; ======================================================
+                       =========================================
+   33 00000010         
+   34 00000010         
+   35 00000010         ;Section ROM code (read only) :  
+   36 00000010                 area             moncode,code,readonly
+   37 00000000         
+   38 00000000                 EXPORT           CallbackSon
+   39 00000000                 EXPORT           StartSon
+   40 00000000         ; écrire le code ici  
+   41 00000000         
+   42 00000000         StartSon
+                               proc
+   43 00000000 4810            ldr              R0,=index
+   44 00000002 6801            ldr              R1,[R0]
+   45 00000004 F04F 0100       mov              R1, #0
+   46 00000008 6001            str              R1,[R0]
+   47 0000000A                 endp
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+   48 0000000A         
+   49 0000000A         ;void CallbackSon(void)
+   50 0000000A         CallbackSon
+                               proc
+   51 0000000A         ;son = table d'échantillon
+   52 0000000A         ;A chaque entrée dans le callback, lire l'échantillon à 
+                       traiter (echantillon courant)  
+   53 0000000A         ;puis mettre à jour un index de table
+   54 0000000A         
+   55 0000000A         ;on doit verifier que index < longueur son (max du table
+                       au)
+   56 0000000A         ; si on a atteint le max on incremente plus index (on va
+                        toujours jouer le meme echantillon - fin du son car plu
+                       s de vibration différente)
+   57 0000000A B5F0            push             {lr,R4-R7}
+   58 0000000C         
+   59 0000000C 490E            ldr              R1,=Son     ;adresse de son dan
+                                                            s R1 ;
+   60 0000000E 4A0D            ldr              R2,=index   ;adresse de index d
+                                                            ans r2
+   61 00000010 480E            ldr              R0,=SortieSon ; adresse de Sort
+                                                            ieSon dans R0
+   62 00000012         
+   63 00000012 6814            ldr              R4,[R2]     ;valeur de index da
+                                                            ns r4
+   64 00000014         
+   65 00000014 4D0E            ldr              R5,=LongueurSon ;adresse de Lon
+                                                            geur Son dans R5
+   66 00000016 682D            ldr              R5,[R5]     ; Valeur de Longeur
+                                                            Son dans r5
+   67 00000018         
+   68 00000018 4E0E            ldr              R6,=auxmul
+   69 0000001A 6836            ldr              R6,[R6]
+   70 0000001C 4F0E            ldr              R7,=auxdiv
+   71 0000001E 683F            ldr              R7,[R7]
+   72 00000020         
+   73 00000020 42AC            cmp              R4, R5      ; Z set to 1 when e
+                                                            qual, 0 if not equa
+                                                            l on compare la val
+                                                            eur de l'index avec
+                                                             la valeur de Longe
+                                                            ur son
+   74 00000022 D00E            beq              FINSI       ; on saute a sinon 
+                                                            si on a fini de par
+                                                            courir le tableau
+   75 00000024         
+   76 00000024         ALORS
+   77 00000024 F931 3014       ldrsh            R3, [R1,R4,LSL #1] ; on met dan
+                                                            s r3 la valeur de l
+                                                            'echantillon couran
+                                                            t
+   78 00000028         ;ldrsh pour les nombre signé (s) et avoir juste 16 bits(
+                       h)
+   79 00000028         
+   80 00000028 F503 4300       add              R3, #32768
+   81 0000002C FB03 F306       mul              R3, R3, R6
+   82 00000030         ;on pourrait faire un RLS de 16 à la place
+   83 00000030 FB93 F3F7       sdiv             R3,R3,R7
+   84 00000034         
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+   85 00000034 F104 0401       add              R4,#1       ; on indente la val
+                                                            eur de l'index
+   86 00000038 6014            str              R4, [R2]    ; on met en memoire
+                                                             la nouvelle valeur
+                                                             de l'index
+   87 0000003A         
+   88 0000003A 6003            str              R3, [R0]    ; on met la valeur 
+                                                            de l'echantillon da
+                                                            ns sortie son
+   89 0000003C 4618            mov              R0, R3      ;car r0 = registre 
+                                                            de base pour les pa
+                                                            rametres donc on lu
+                                                            i donne la valeur d
+                                                            e sortie son
+   90 0000003E F7FF FFFE       bl               PWM_Set_Value_TIM3_Ch3
+   91 00000042         
+   92 00000042         FINSI
+   93 00000042         ;on a fini de traiter les échantillons -> ne fait rien 
+   94 00000042 BDF0            pop              {pc,R4-R7}
+   95 00000044         
+   96 00000044                 endp
+   97 00000044                 END
+              00000000 
+              00000000 
+              00000000 
+              00000000 
+              00000000 
+              00000000 
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M3 --apcs=interw
+ork --depend=.\obj\gestionson.d -o.\obj\gestionson.o -I.\Driver -I.\Driver -I.\
+RTE\_CibleSondeKEIL -IC:\Programdata\Keil\Arm\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\
+Include -IC:\Programdata\Keil\Arm\Packs\Keil\STM32F1xx_DFP\2.3.0\Device\Include
+ --predefine="__EVAL SETA 1" --predefine="__MICROLIB SETA 1" --predefine="__UVI
+SION_VERSION SETA 530" --predefine="_RTE_ SETA 1" --predefine="STM32F10X_MD SET
+A 1" --predefine="_RTE_ SETA 1" --list=gestionson.lst ..\PjtKEIL_StepSon\Src\Ge
+stionSon.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+mesdata 00000000
+
+Symbol: mesdata
+   Definitions
+      At line 11 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      None
+Comment: mesdata unused
+1 symbol
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+SortieSon 00000000
+
+Symbol: SortieSon
+   Definitions
+      At line 17 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 18 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+      At line 61 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+
+auxdiv 0000000C
+
+Symbol: auxdiv
+   Definitions
+      At line 24 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 70 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: auxdiv used once
+auxmul 00000008
+
+Symbol: auxmul
+   Definitions
+      At line 23 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 68 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: auxmul used once
+index 00000004
+
+Symbol: index
+   Definitions
+      At line 20 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 21 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+      At line 43 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+      At line 60 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+
+maram 00000000
+
+Symbol: maram
+   Definitions
+      At line 15 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      None
+Comment: maram unused
+5 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+ALORS 00000024
+
+Symbol: ALORS
+   Definitions
+      At line 76 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      None
+Comment: ALORS unused
+CallbackSon 0000000A
+
+Symbol: CallbackSon
+   Definitions
+      At line 50 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 38 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: CallbackSon used once
+FINSI 00000042
+
+Symbol: FINSI
+   Definitions
+      At line 92 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 74 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: FINSI used once
+StartSon 00000000
+
+Symbol: StartSon
+   Definitions
+      At line 42 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 39 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: StartSon used once
+moncode 00000000
+
+Symbol: moncode
+   Definitions
+      At line 36 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      None
+Comment: moncode unused
+5 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+GPIOA_Clear 00000000
+
+Symbol: GPIOA_Clear
+   Definitions
+      At line 48 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOA_Clear unused
+GPIOA_Set 00000000
+
+Symbol: GPIOA_Set
+   Definitions
+      At line 30 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOA_Set unused
+GPIOB_Clear 00000000
+
+Symbol: GPIOB_Clear
+   Definitions
+      At line 51 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOB_Clear unused
+GPIOB_Set 00000000
+
+Symbol: GPIOB_Set
+   Definitions
+      At line 33 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOB_Set unused
+GPIOC_Clear 00000000
+
+Symbol: GPIOC_Clear
+   Definitions
+      At line 54 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOC_Clear unused
+GPIOC_Set 00000000
+
+Symbol: GPIOC_Set
+   Definitions
+      At line 36 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      None
+Comment: GPIOC_Set unused
+LongueurSon 00000000
+
+Symbol: LongueurSon
+   Definitions
+      At line 5 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 65 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: LongueurSon used once
+PWM_Set_Value_TIM3_Ch3 00000000
+
+Symbol: PWM_Set_Value_TIM3_Ch3
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+External symbols
+
+   Definitions
+      At line 18 in file .\Driver\DriverJeuLaser.inc
+   Uses
+      At line 90 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: PWM_Set_Value_TIM3_Ch3 used once
+PeriodeSonMicroSec 00000000
+
+Symbol: PeriodeSonMicroSec
+   Definitions
+      At line 6 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      None
+Comment: PeriodeSonMicroSec unused
+Son 00000000
+
+Symbol: Son
+   Definitions
+      At line 7 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+   Uses
+      At line 59 in file ..\PjtKEIL_StepSon\Src\GestionSon.s
+Comment: Son used once
+10 symbols
+358 symbols in table

@@ -2,7 +2,9 @@
 ".\obj\principal.o"
 ".\obj\dft.o"
 ".\obj\signal.o"
-".\obj\startup-rvds.o"
+".\obj\bruitverre.o"
+".\obj\gestionson.o"
+".\obj\startup-rvds_1.o"
 ".\Driver\DriverJeuLaser.lib"
 --library_type=microlib --strict --scatter ".\Obj\StepDFT.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols

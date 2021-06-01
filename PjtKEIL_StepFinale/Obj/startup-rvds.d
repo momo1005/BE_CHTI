@@ -1,1 +1,1 @@
-.\obj\startup-rvds.o: Src\startup-rvds.s
+.\obj\startup-rvds.o: ..\PjtKEIL_StepSon\Src\startup-rvds.s
